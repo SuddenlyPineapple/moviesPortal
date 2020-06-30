@@ -1,0 +1,112 @@
+version: '3'
+
+services:
+# Movies Portal Configuration
+  movie-service:
+    build:
+      context: ./movie-service
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./movie-service:/movie-service
+    depends_on:
+      - redis
+      - cassandra
+      - kafka
+      - frontend
+      - management
+  genres-service:
+    build:
+      context: ./genres-service
+    ports:
+      - "5003:5003"
+    volumes:
+      - ./genres-service:/genres-service
+    depends_on:
+      - redis
+      - cassandra
+      - kafka
+      - frontend
+      - management
+  ratings-service:
+    build:
+      context: ./ratings-service
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./ratings-service:/ratings-service
+    depends_on:
+      - redis
+      - cassandra
+      - kafka
+      - frontend
+      - management
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+  rebrow:
+    image: marian/rebrow
+    ports:
+      - "5001:5001"
+    links:
+
+      - redis
+  cassandra:
+    image: cassandra:3.9
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME='cassandra'
+      - CASSANDRA_NUM_TOKENS=256
+      - CASSANDRA_RPC_ADDRESS=0.0.0.0
+# Allegro Hermes Configuration
+  zk:
+    image: confluentinc/cp-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    depends_on:
+      - cassandra
+  kafka:
+    image: confluentinc/cp-kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zk
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_ZOOKEEPER_CONNECT: zk:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  graphite:
+    image: nickstenning/graphite
+    ports:
+      - "80:80"
+      - "2003:2003"
+
+  frontend:
+    image: allegro/hermes-frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - zk
+      - kafka
+      - graphite
+
+  consumers:
+    image: allegro/hermes-consumers
+    depends_on:
+      - zk
+      - kafka
+      - graphite
+
+  management:
+    image: allegro/hermes-management
+    ports:
+      - "8090:8090"
+    depends_on:
+      - zk
+      - kafka
+      - graphite

@@ -1,0 +1,7 @@
+flask
+redis
+numpy
+pandas
+cassandra-driver
+requests
+pyhermes
